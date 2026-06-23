@@ -433,8 +433,8 @@ export default function RFAudioPlayer() {
   };
 
   return (
-    <div className="bg-[#06040d] text-[#f1f1f9] min-h-screen flex justify-center items-center p-2 font-sans overflow-x-hidden">
-      <div className="w-full max-w-[430px] bg-[#0f0b21] rounded-[24px] shadow-[0_20px_50px_rgba(0,0,0,0.8)] border border-[#241b4e] overflow-hidden flex flex-col h-[92vh] max-h-[900px] relative">
+    <div className="bg-[#0f0b21] sm:bg-[#06040d] text-[#f1f1f9] min-h-[100dvh] w-full flex justify-center items-center sm:p-4 font-sans overflow-hidden">
+      <div className="w-full sm:max-w-[430px] bg-[#0f0b21] sm:rounded-[24px] sm:shadow-[0_20px_50px_rgba(0,0,0,0.8)] sm:border border-[#241b4e] overflow-hidden flex flex-col h-[100dvh] sm:h-[92vh] sm:max-h-[900px] relative">
         
         {/* Toast */}
         <div className={`absolute top-5 left-1/2 -translate-x-1/2 bg-[#9d4edd]/95 text-white py-2.5 px-5 rounded-full text-sm font-semibold z-[100] transition-all duration-300 shadow-lg whitespace-nowrap pointer-events-none ${showToastMsg ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-5'}`}>
@@ -611,15 +611,15 @@ export default function RFAudioPlayer() {
           {/* TELA 2: BIBLIOTECA */}
           {currentTab === 'library' && (
             <div className="flex flex-col flex-1 animate-in slide-in-from-bottom-4 duration-300">
-              <div className="text-[1.3rem] font-bold mb-4 flex justify-between items-center">
+              <div className="text-[1.3rem] font-bold mb-4 flex justify-between items-center flex-wrap gap-2">
                 <span>Biblioteca</span>
-                <div className="flex gap-2 relative">
-                   <label className="border border-[#241b4e] hover:border-[#9d4edd] text-[#f1f1f9] hover:text-[#9d4edd] px-3 py-1.5 rounded-lg cursor-pointer text-sm inline-flex items-center gap-1.5 transition-colors">
-                     <Plus className="w-4 h-4"/> Audio
+                <div className="flex gap-1.5 flex-wrap">
+                   <label className="border border-[#241b4e] hover:border-[#9d4edd] text-[#f1f1f9] hover:text-[#9d4edd] px-2.5 py-1.5 rounded-lg cursor-pointer text-xs sm:text-sm inline-flex items-center gap-1.5 transition-colors">
+                     <Plus className="w-4 h-4"/> <span className="hidden sm:inline">Audio</span><span className="sm:hidden">Áudio</span>
                      <input type="file" accept="audio/*" multiple className="hidden" onChange={handleLocalFiles} />
                    </label>
                      {/* Webkit directory support to select folders */}
-                   <label className="border border-[#241b4e] hover:border-[#9d4edd] text-[#f1f1f9] hover:text-[#9d4edd] px-3 py-1.5 rounded-lg cursor-pointer text-sm inline-flex items-center gap-1.5 transition-colors">
+                   <label className="border border-[#241b4e] hover:border-[#9d4edd] text-[#f1f1f9] hover:text-[#9d4edd] px-2.5 py-1.5 rounded-lg cursor-pointer text-xs sm:text-sm inline-flex items-center gap-1.5 transition-colors">
                      <FolderPlus className="w-4 h-4"/> Pasta
                      <input type="file" accept="audio/*" multiple {...{ webkitdirectory: "", directory: "" } as any} className="hidden" onChange={handleLocalFiles} />
                    </label>
@@ -627,17 +627,17 @@ export default function RFAudioPlayer() {
               </div>
 
               {/* Tabs */}
-              <div className="flex mb-4 border-b border-[#241b4e] pb-2 items-center justify-between">
-                <div className="flex gap-2">
+              <div className="flex flex-wrap mb-4 border-b border-[#241b4e] pb-2 items-center justify-between gap-y-2">
+                <div className="flex gap-1 sm:gap-2">
                   <button 
                     onClick={() => {setLibraryTab('tracks'); setActivePlaylistId(null);}} 
-                    className={`px-3 py-1.5 text-[0.95rem] rounded-md transition-colors ${libraryTab === 'tracks' ? 'bg-[#9d4edd]/10 text-[#9d4edd] font-semibold' : 'text-[#7b749b] hover:bg-white/5'}`}
+                    className={`px-2 sm:px-3 py-1.5 text-xs sm:text-[0.95rem] rounded-md transition-colors ${libraryTab === 'tracks' ? 'bg-[#9d4edd]/10 text-[#9d4edd] font-semibold' : 'text-[#7b749b] hover:bg-white/5'}`}
                   >
                     Músicas
                   </button>
                   <button 
                     onClick={() => {setLibraryTab('playlists'); setActivePlaylistId(null);}} 
-                    className={`px-3 py-1.5 text-[0.95rem] rounded-md transition-colors ${libraryTab === 'playlists' ? 'bg-[#9d4edd]/10 text-[#9d4edd] font-semibold' : 'text-[#7b749b] hover:bg-white/5'}`}
+                    className={`px-2 sm:px-3 py-1.5 text-xs sm:text-[0.95rem] rounded-md transition-colors ${libraryTab === 'playlists' ? 'bg-[#9d4edd]/10 text-[#9d4edd] font-semibold' : 'text-[#7b749b] hover:bg-white/5'}`}
                   >
                     Playlists
                   </button>
@@ -645,9 +645,9 @@ export default function RFAudioPlayer() {
                 {libraryTab === 'playlists' && !activePlaylistId && (
                   <button 
                     onClick={createNewPlaylist}
-                    className="ml-auto px-3 py-1.5 text-xs font-semibold border border-[#241b4e] hover:border-[#9d4edd] text-[#f1f1f9] hover:text-[#9d4edd] rounded-lg transition-colors flex items-center gap-1.5"
+                    className="ml-auto px-2 sm:px-3 py-1.5 text-xs font-semibold border border-[#241b4e] hover:border-[#9d4edd] text-[#f1f1f9] hover:text-[#9d4edd] rounded-lg transition-colors flex items-center gap-1"
                   >
-                      <Plus className="w-3.5 h-3.5"/> Criar Playlist
+                      <Plus className="w-3.5 h-3.5"/><span className="whitespace-nowrap">Criar</span>
                   </button>
                 )}
               </div>
