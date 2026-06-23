@@ -6,7 +6,7 @@ import {
   Play, Pause, SkipBack, SkipForward, Shuffle, Repeat, 
   Heart, List, Search, FolderPlus, Folder, Link as LinkIcon, 
   Plus, Upload, Trash2, ArrowLeft, Download, Wifi, Copy, CheckCircle,
-  Share2, GripVertical, Circle, CircleDot
+  Share2, GripVertical, Circle, CircleDot, Edit2
 } from 'lucide-react';
 
 interface Track {
@@ -57,6 +57,8 @@ export default function RFAudioPlayer() {
   const [toastMsg, setToastMsg] = useState("");
   const [showToastMsg, setShowToastMsg] = useState(false);
   const [draggedIdx, setDraggedIdx] = useState<number | null>(null);
+
+  const [editingTrack, setEditingTrack] = useState<{id: string, title: string, artist: string} | null>(null);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -244,6 +246,18 @@ export default function RFAudioPlayer() {
       setCurrentTime(0);
       setDuration(0);
     }
+  };
+
+  const saveTrackEdit = () => {
+    if (!editingTrack) return;
+    setTracks(prev => prev.map(t => {
+      if (t.id === editingTrack.id) {
+        return { ...t, title: editingTrack.title || 'Unknown Title', artist: editingTrack.artist || 'Unknown Artist' };
+      }
+      return t;
+    }));
+    setEditingTrack(null);
+    showToast("Informações atualizadas!");
   };
 
   const handleLocalFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -685,6 +699,15 @@ export default function RFAudioPlayer() {
                               <div className="text-[0.8rem] text-[#7b749b] truncate">{t.artist}</div>
                             </div>
                             <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditingTrack({ id: t.id, title: t.title, artist: t.artist });
+                              }}
+                              className="w-10 h-10 hidden group-hover:flex items-center justify-center text-[#7b749b] hover:text-white rounded-full transition-colors flex-shrink-0"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                            <button 
                               onClick={(e) => shareTrack(t, e)}
                               className="w-10 h-10 hidden group-hover:flex items-center justify-center text-[#7b749b] hover:text-[#00b4d8] hover:bg-[#00b4d8]/10 rounded-full transition-colors flex-shrink-0"
                             >
@@ -793,6 +816,15 @@ export default function RFAudioPlayer() {
                                 <div className="text-[0.8rem] text-[#7b749b] truncate">{t.artist}</div>
                               </div>
                               <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditingTrack({ id: t.id, title: t.title, artist: t.artist });
+                                }}
+                                className="w-10 h-10 flex items-center justify-center text-[#7b749b] hover:text-white rounded-full transition-colors flex-shrink-0 z-10 mr-1"
+                              >
+                                <Edit2 className="w-4 h-4" />
+                              </button>
+                              <button 
                                 onClick={(e) => shareTrack(t, e)}
                                 className="w-10 h-10 flex items-center justify-center text-[#7b749b] hover:text-[#00b4d8] hover:bg-[#00b4d8]/10 rounded-full transition-colors flex-shrink-0 z-10 mr-1"
                               >
@@ -845,6 +877,15 @@ export default function RFAudioPlayer() {
                                 <div className="font-semibold text-[0.95rem] truncate mb-0.5">{t.title}</div>
                                 <div className="text-[0.8rem] text-[#7b749b] truncate">{t.artist}</div>
                               </div>
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditingTrack({ id: t.id, title: t.title, artist: t.artist });
+                                }}
+                                className="w-10 h-10 flex items-center justify-center text-[#7b749b] hover:text-white rounded-full transition-colors flex-shrink-0"
+                              >
+                                <Edit2 className="w-4 h-4" />
+                              </button>
                             </div>
                           )
                        })
@@ -958,6 +999,50 @@ export default function RFAudioPlayer() {
           )}
 
         </div>
+
+        {/* Modal de Edição */}
+        {editingTrack && (
+          <div className="absolute inset-0 z-[200] bg-black/60 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-[#160f33] w-full max-w-[320px] rounded-2xl border border-[#3c1671] p-5 shadow-2xl flex flex-col gap-4 animate-in zoom-in-95 duration-200">
+              <h3 className="font-bold text-lg">Editar Música</h3>
+              
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm text-[#7b749b]">Nome da Música</label>
+                <input 
+                  type="text" 
+                  value={editingTrack.title}
+                  onChange={e => setEditingTrack({...editingTrack, title: e.target.value})}
+                  className="w-full py-2 px-3 bg-black/30 border border-[#241b4e] rounded-lg text-white outline-none text-sm focus:border-[#9d4edd] transition-colors"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm text-[#7b749b]">Autor / Artista</label>
+                <input 
+                  type="text" 
+                  value={editingTrack.artist}
+                  onChange={e => setEditingTrack({...editingTrack, artist: e.target.value})}
+                  className="w-full py-2 px-3 bg-black/30 border border-[#241b4e] rounded-lg text-white outline-none text-sm focus:border-[#9d4edd] transition-colors"
+                />
+              </div>
+
+              <div className="flex gap-3 justify-end mt-2">
+                <button 
+                  onClick={() => setEditingTrack(null)}
+                  className="px-4 py-2 text-sm text-[#7b749b] hover:text-white transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button 
+                  onClick={saveTrackEdit}
+                  className="px-4 py-2 text-sm font-semibold bg-gradient-to-r from-[#9d4edd] to-[#5a189a] rounded-lg text-white shadow-[0_4px_10px_rgba(157,78,221,0.3)] hover:opacity-90 transition-opacity"
+                >
+                  Salvar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* --- BOTTOM NAVIGATION --- */}
         <nav className="absolute bottom-0 left-0 right-0 h-[75px] bg-[#0f0b21]/85 backdrop-blur-md border-t border-[#241b4e] flex justify-around items-center z-10">
