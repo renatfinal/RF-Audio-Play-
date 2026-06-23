@@ -6,7 +6,7 @@ import {
   Play, Pause, SkipBack, SkipForward, Shuffle, Repeat, 
   Heart, List, Search, FolderPlus, Folder, Link as LinkIcon, 
   Plus, Upload, Trash2, ArrowLeft, Download, Wifi, Copy, CheckCircle,
-  Share2, GripVertical, Circle, CircleDot, Edit2
+  Share2, GripVertical, Circle, CircleDot, Edit2, ArrowRight
 } from 'lucide-react';
 
 interface Track {
@@ -59,6 +59,11 @@ export default function RFAudioPlayer() {
   const [draggedIdx, setDraggedIdx] = useState<number | null>(null);
 
   const [editingTrack, setEditingTrack] = useState<{id: string, title: string, artist: string} | null>(null);
+  const [addToPlaylistTrackId, setAddToPlaylistTrackId] = useState<string | null>(null);
+  
+  const [selectedPlaylistId, setSelectedPlaylistId] = useState<string | null>(null);
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isLongPressFiringRef = useRef<boolean>(false);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -246,6 +251,66 @@ export default function RFAudioPlayer() {
       setCurrentTime(0);
       setDuration(0);
     }
+  };
+
+  const deleteSelectedPlaylist = () => {
+    if (!selectedPlaylistId) return;
+    const next = { ...playlists };
+    delete next[selectedPlaylistId];
+    setPlaylists(next);
+    setSelectedPlaylistId(null);
+    showToast("Playlist excluída com sucesso.");
+  };
+
+  const handlePointerDown = (id: string, e: React.PointerEvent) => {
+    isLongPressFiringRef.current = false;
+    longPressTimerRef.current = setTimeout(() => {
+      isLongPressFiringRef.current = true;
+      setSelectedPlaylistId(prev => prev === id ? null : id);
+      if (typeof window !== 'undefined' && window.navigator && window.navigator.vibrate) {
+        window.navigator.vibrate(50);
+      }
+    }, 500); // 500ms long press
+  };
+
+  const handlePointerUpOrLeave = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
+
+  const handleClickPlaylist = (id: string, e: React.MouseEvent) => {
+    if (isLongPressFiringRef.current) {
+        isLongPressFiringRef.current = false;
+        return;
+    }
+    if (selectedPlaylistId) {
+        setSelectedPlaylistId(id === selectedPlaylistId ? null : id);
+        return;
+    }
+    setActivePlaylistId(id);
+  };
+
+  const addTrackToSelectedPlaylist = (playlistId: string) => {
+    if (!addToPlaylistTrackId) return;
+    setPlaylists(prev => {
+      const pl = prev[playlistId];
+      if (!pl) return prev;
+      if (pl.trackIds.includes(addToPlaylistTrackId)) {
+        showToast("Música já está na playlist.");
+        return prev;
+      }
+      showToast("Música adicionada à playlist!");
+      return {
+        ...prev,
+        [playlistId]: {
+          ...pl,
+          trackIds: [...pl.trackIds, addToPlaylistTrackId]
+        }
+      };
+    });
+    setAddToPlaylistTrackId(null);
   };
 
   const saveTrackEdit = () => {
@@ -625,18 +690,37 @@ export default function RFAudioPlayer() {
           {/* TELA 2: BIBLIOTECA */}
           {currentTab === 'library' && (
             <div className="flex flex-col flex-1 animate-in slide-in-from-bottom-4 duration-300">
-              <div className="text-[1.3rem] font-bold mb-4 flex justify-between items-center flex-wrap gap-2">
-                <span>Biblioteca</span>
-                <div className="flex gap-1.5 flex-wrap">
-                   <label className="border border-[#241b4e] hover:border-[#9d4edd] text-[#f1f1f9] hover:text-[#9d4edd] px-2.5 py-1.5 rounded-lg cursor-pointer text-xs sm:text-sm inline-flex items-center gap-1.5 transition-colors">
-                     <Plus className="w-4 h-4"/> <span className="hidden sm:inline">Audio</span><span className="sm:hidden">Áudio</span>
-                     <input type="file" accept="audio/*" multiple className="hidden" onChange={handleLocalFiles} />
-                   </label>
-                     {/* Webkit directory support to select folders */}
-                   <label className="border border-[#241b4e] hover:border-[#9d4edd] text-[#f1f1f9] hover:text-[#9d4edd] px-2.5 py-1.5 rounded-lg cursor-pointer text-xs sm:text-sm inline-flex items-center gap-1.5 transition-colors">
-                     <FolderPlus className="w-4 h-4"/> Pasta
-                     <input type="file" accept="audio/*" multiple {...{ webkitdirectory: "", directory: "" } as any} className="hidden" onChange={handleLocalFiles} />
-                   </label>
+              <div className="text-[1.3rem] font-bold mb-4 flex justify-between items-start flex-wrap gap-2">
+                <span className="mt-1">Biblioteca</span>
+                <div className="flex flex-col gap-1.5 w-auto">
+                   <div className="flex gap-1.5 w-full">
+                     <label className="border border-[#241b4e] hover:border-[#9d4edd] text-[#f1f1f9] hover:text-[#9d4edd] px-2.5 py-1.5 rounded-lg cursor-pointer text-xs sm:text-sm flex-1 inline-flex justify-center items-center gap-1.5 transition-colors">
+                       <Plus className="w-4 h-4"/> <span className="hidden sm:inline">Audio</span><span className="sm:hidden">Áudio</span>
+                       <input type="file" accept="audio/*" multiple className="hidden" onChange={handleLocalFiles} />
+                     </label>
+                       {/* Webkit directory support to select folders */}
+                     <label className="border border-[#241b4e] hover:border-[#9d4edd] text-[#f1f1f9] hover:text-[#9d4edd] px-2.5 py-1.5 rounded-lg cursor-pointer text-xs sm:text-sm flex-1 inline-flex justify-center items-center gap-1.5 transition-colors">
+                       <FolderPlus className="w-4 h-4"/> Pasta
+                       <input type="file" accept="audio/*" multiple {...{ webkitdirectory: "", directory: "" } as any} className="hidden" onChange={handleLocalFiles} />
+                     </label>
+                   </div>
+                   {libraryTab === 'playlists' && !activePlaylistId && (
+                     <div className="flex gap-1.5 w-full">
+                        <button 
+                          onClick={createNewPlaylist}
+                          className="flex-1 px-2.5 py-1.5 text-xs font-semibold border border-[#241b4e] hover:border-[#9d4edd] text-[#f1f1f9] hover:text-[#9d4edd] rounded-lg transition-colors flex justify-center items-center gap-1.5"
+                        >
+                            <Plus className="w-3.5 h-3.5"/><span className="whitespace-nowrap">Criar</span>
+                        </button>
+                        <button 
+                          onClick={deleteSelectedPlaylist}
+                          disabled={!selectedPlaylistId}
+                          className={`flex-1 px-2.5 py-1.5 text-xs font-semibold border rounded-lg transition-colors flex justify-center items-center gap-1.5 ${selectedPlaylistId ? 'border-red-500/50 text-red-500 hover:bg-red-500/10 cursor-pointer' : 'border-[#241b4e] text-[#554d75] cursor-not-allowed'}`}
+                        >
+                            <Trash2 className="w-3.5 h-3.5"/><span className="whitespace-nowrap">Excluir</span>
+                        </button>
+                     </div>
+                   )}
                 </div>
               </div>
 
@@ -644,26 +728,18 @@ export default function RFAudioPlayer() {
               <div className="flex flex-wrap mb-4 border-b border-[#241b4e] pb-2 items-center justify-between gap-y-2">
                 <div className="flex gap-1 sm:gap-2">
                   <button 
-                    onClick={() => {setLibraryTab('tracks'); setActivePlaylistId(null);}} 
+                    onClick={() => {setLibraryTab('tracks'); setActivePlaylistId(null); setSelectedPlaylistId(null);}} 
                     className={`px-2 sm:px-3 py-1.5 text-xs sm:text-[0.95rem] rounded-md transition-colors ${libraryTab === 'tracks' ? 'bg-[#9d4edd]/10 text-[#9d4edd] font-semibold' : 'text-[#7b749b] hover:bg-white/5'}`}
                   >
                     Músicas
                   </button>
                   <button 
-                    onClick={() => {setLibraryTab('playlists'); setActivePlaylistId(null);}} 
+                    onClick={() => {setLibraryTab('playlists'); setActivePlaylistId(null); setSelectedPlaylistId(null);}} 
                     className={`px-2 sm:px-3 py-1.5 text-xs sm:text-[0.95rem] rounded-md transition-colors ${libraryTab === 'playlists' ? 'bg-[#9d4edd]/10 text-[#9d4edd] font-semibold' : 'text-[#7b749b] hover:bg-white/5'}`}
                   >
                     Playlists
                   </button>
                 </div>
-                {libraryTab === 'playlists' && !activePlaylistId && (
-                  <button 
-                    onClick={createNewPlaylist}
-                    className="ml-auto px-2 sm:px-3 py-1.5 text-xs font-semibold border border-[#241b4e] hover:border-[#9d4edd] text-[#f1f1f9] hover:text-[#9d4edd] rounded-lg transition-colors flex items-center gap-1"
-                  >
-                      <Plus className="w-3.5 h-3.5"/><span className="whitespace-nowrap">Criar</span>
-                  </button>
-                )}
               </div>
 
               {libraryTab === 'tracks' && (
@@ -703,19 +779,32 @@ export default function RFAudioPlayer() {
                                 e.stopPropagation();
                                 setEditingTrack({ id: t.id, title: t.title, artist: t.artist });
                               }}
-                              className="w-10 h-10 hidden group-hover:flex items-center justify-center text-[#7b749b] hover:text-white rounded-full transition-colors flex-shrink-0"
+                              className="w-8 h-8 flex items-center justify-center text-[#7b749b] hover:text-white rounded-full transition-colors flex-shrink-0"
+                              title="Editar"
                             >
                               <Edit2 className="w-4 h-4" />
                             </button>
                             <button 
                               onClick={(e) => shareTrack(t, e)}
-                              className="w-10 h-10 hidden group-hover:flex items-center justify-center text-[#7b749b] hover:text-[#00b4d8] hover:bg-[#00b4d8]/10 rounded-full transition-colors flex-shrink-0"
+                              className="w-8 h-8 flex items-center justify-center text-[#7b749b] hover:text-[#00b4d8] hover:bg-[#00b4d8]/10 rounded-full transition-colors flex-shrink-0"
+                              title="Compartilhar"
                             >
                               <Share2 className="w-4 h-4" />
                             </button>
                             <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setAddToPlaylistTrackId(t.id);
+                              }}
+                              className="w-8 h-8 flex items-center justify-center text-[#7b749b] hover:text-[#9d4edd] hover:bg-[#9d4edd]/10 rounded-full transition-colors flex-shrink-0"
+                              title="Mover para Playlist"
+                            >
+                              <ArrowRight className="w-4 h-4" />
+                            </button>
+                            <button 
                               onClick={(e) => deleteTrack(t.id, e)}
-                              className="w-10 h-10 flex items-center justify-center text-red-500 hover:bg-red-500/10 rounded-full transition-colors flex-shrink-0"
+                              className="w-8 h-8 flex items-center justify-center text-red-500 hover:bg-red-500/10 rounded-full transition-colors flex-shrink-0"
+                              title="Excluir"
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
@@ -742,21 +831,13 @@ export default function RFAudioPlayer() {
                       {Object.values(playlists).map(pl => (
                         <div 
                           key={pl.id}
-                          className="bg-white/5 border border-[#241b4e] rounded-xl p-4 text-center cursor-pointer hover:-translate-y-1 hover:border-[#9d4edd] transition-all relative group"
-                          onClick={() => setActivePlaylistId(pl.id)}
+                          className={`border rounded-xl p-4 text-center cursor-pointer hover:-translate-y-1 transition-all relative group select-none ${selectedPlaylistId === pl.id ? 'bg-[#9d4edd]/20 border-[#9d4edd]' : 'bg-white/5 border-[#241b4e] hover:border-[#9d4edd]'}`}
+                          onPointerDown={(e) => handlePointerDown(pl.id, e)}
+                          onPointerUp={handlePointerUpOrLeave}
+                          onPointerLeave={handlePointerUpOrLeave}
+                          onClick={(e) => handleClickPlaylist(pl.id, e)}
                         >
-                           <button 
-                             className="absolute top-2 right-2 text-red-500 opacity-0 group-hover:opacity-100 hover:bg-red-500/10 p-1.5 rounded-full z-10 transition-all"
-                             onClick={(e) => {
-                               e.stopPropagation();
-                               const next = { ...playlists };
-                               delete next[pl.id];
-                               setPlaylists(next);
-                             }}
-                           >
-                             <Trash2 className="w-4 h-4" />
-                           </button>
-                           <div className="text-[#00b4d8] text-[2.2rem] mb-2 flex justify-center"><List className="w-8 h-8"/></div>
+                           <div className="text-[#00b4d8] text-[2.2rem] mb-2 flex justify-center"><List className={`w-8 h-8 ${selectedPlaylistId === pl.id ? 'text-[#9d4edd]' : ''}`}/></div>
                            <div className="font-bold text-sm truncate px-2">{pl.name}</div>
                            <div className="text-xs text-[#7b749b]">{pl.trackIds.length} faixas</div>
                         </div>
@@ -820,13 +901,15 @@ export default function RFAudioPlayer() {
                                   e.stopPropagation();
                                   setEditingTrack({ id: t.id, title: t.title, artist: t.artist });
                                 }}
-                                className="w-10 h-10 flex items-center justify-center text-[#7b749b] hover:text-white rounded-full transition-colors flex-shrink-0 z-10 mr-1"
+                                className="w-8 h-8 flex items-center justify-center text-[#7b749b] hover:text-white rounded-full transition-colors flex-shrink-0 z-10"
+                                title="Editar"
                               >
                                 <Edit2 className="w-4 h-4" />
                               </button>
                               <button 
                                 onClick={(e) => shareTrack(t, e)}
-                                className="w-10 h-10 flex items-center justify-center text-[#7b749b] hover:text-[#00b4d8] hover:bg-[#00b4d8]/10 rounded-full transition-colors flex-shrink-0 z-10 mr-1"
+                                className="w-8 h-8 flex items-center justify-center text-[#7b749b] hover:text-[#00b4d8] hover:bg-[#00b4d8]/10 rounded-full transition-colors flex-shrink-0 z-10"
+                                title="Compartilhar"
                               >
                                 <Share2 className="w-4 h-4" />
                               </button>
@@ -841,7 +924,8 @@ export default function RFAudioPlayer() {
                                     [activePlaylistId]: { ...pl, trackIds: newIds }
                                   });
                                 }}
-                                className="w-10 h-10 flex items-center justify-center text-red-500 hover:bg-red-500/10 rounded-full transition-colors flex-shrink-0 z-10"
+                                className="w-8 h-8 flex items-center justify-center text-red-500 hover:bg-red-500/10 rounded-full transition-colors flex-shrink-0 z-10"
+                                title="Remover da Playlist"
                               >
                                 <Trash2 className="w-4 h-4" />
                               </button>
@@ -882,9 +966,17 @@ export default function RFAudioPlayer() {
                                   e.stopPropagation();
                                   setEditingTrack({ id: t.id, title: t.title, artist: t.artist });
                                 }}
-                                className="w-10 h-10 flex items-center justify-center text-[#7b749b] hover:text-white rounded-full transition-colors flex-shrink-0"
+                                className="w-8 h-8 flex items-center justify-center text-[#7b749b] hover:text-white rounded-full transition-colors flex-shrink-0"
+                                title="Editar"
                               >
                                 <Edit2 className="w-4 h-4" />
+                              </button>
+                              <button 
+                                onClick={(e) => shareTrack(t, e)}
+                                className="w-8 h-8 flex items-center justify-center text-[#7b749b] hover:text-[#00b4d8] hover:bg-[#00b4d8]/10 rounded-full transition-colors flex-shrink-0 z-10"
+                                title="Compartilhar"
+                              >
+                                <Share2 className="w-4 h-4" />
                               </button>
                             </div>
                           )
@@ -1038,6 +1130,40 @@ export default function RFAudioPlayer() {
                   className="px-4 py-2 text-sm font-semibold bg-gradient-to-r from-[#9d4edd] to-[#5a189a] rounded-lg text-white shadow-[0_4px_10px_rgba(157,78,221,0.3)] hover:opacity-90 transition-opacity"
                 >
                   Salvar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal de Mover para Playlist */}
+        {addToPlaylistTrackId && (
+          <div className="absolute inset-0 z-[200] bg-black/60 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-[#160f33] w-full max-w-[320px] max-h-[80vh] rounded-2xl border border-[#3c1671] p-5 shadow-2xl flex flex-col gap-4 animate-in zoom-in-95 duration-200">
+              <h3 className="font-bold text-lg">Mover para Playlist</h3>
+              
+              <div className="flex flex-col gap-2 overflow-y-auto pr-1">
+                {Object.values(playlists).length === 0 && (
+                   <div className="text-center p-4 text-[#7b749b] text-sm">Nenhuma playlist criada.</div>
+                )}
+                {Object.values(playlists).map(pl => (
+                   <div 
+                     key={pl.id}
+                     onClick={() => addTrackToSelectedPlaylist(pl.id)}
+                     className="flex items-center gap-3 p-3 rounded-xl cursor-pointer bg-white/5 border border-[#241b4e] hover:border-[#9d4edd] transition-all"
+                   >
+                     <List className="w-5 h-5 text-[#00b4d8]" />
+                     <div className="font-semibold text-sm truncate flex-1">{pl.name}</div>
+                   </div>
+                ))}
+              </div>
+
+              <div className="flex justify-end mt-2 pt-2 border-t border-[#241b4e]">
+                <button 
+                  onClick={() => setAddToPlaylistTrackId(null)}
+                  className="px-4 py-2 text-sm text-[#7b749b] hover:text-white transition-colors"
+                >
+                  Cancelar
                 </button>
               </div>
             </div>
