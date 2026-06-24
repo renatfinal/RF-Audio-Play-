@@ -342,11 +342,15 @@ export default function RFAudioPlayer() {
       }
       
       const objectUrl = URL.createObjectURL(f);
+      const cleanTitle = f.name.replace(/\.[^/.]+$/, "");
+      const themes = ['sunset', 'sea', 'ocean', 'glacier', 'forest', 'fullmoon', 'jesus'];
+      const randomTheme = themes[Math.floor(Math.random() * themes.length)];
+      
       const newT: Track = {
         id: `track_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
-        title: f.name.replace(/\.[^/.]+$/, ""),
+        title: cleanTitle,
         artist: "Arquivo Local",
-        cover: `https://picsum.photos/id/${Math.floor(Math.random() * 1000)}/400/400`,
+        cover: `https://loremflickr.com/400/400/${randomTheme}?lock=${Math.floor(Math.random() * 10000)}`,
         lyrics: "",
         isFavorite: false,
         fileBlob: f,
@@ -396,11 +400,15 @@ export default function RFAudioPlayer() {
         }
         
         const objectUrl = URL.createObjectURL(f);
+        const cleanTitle = f.name.replace(/\.[^/.]+$/, "");
+        const themes = ['sunset', 'sea', 'ocean', 'glacier', 'forest', 'fullmoon', 'jesus'];
+        const randomTheme = themes[Math.floor(Math.random() * themes.length)];
+        
         const newT: Track = {
             id: `track_${Date.now()}_${Math.random().toString(36).substr(2, 4)}_${i}`,
-            title: f.name.replace(/\.[^/.]+$/, ""),
+            title: cleanTitle,
             artist: "Arquivo Local",
-            cover: `https://picsum.photos/id/${Math.floor(Math.random() * 1000)}/400/400`,
+            cover: `https://loremflickr.com/400/400/${randomTheme}?lock=${Math.floor(Math.random() * 10000)}`,
             lyrics: "",
             isFavorite: false,
             fileBlob: f,
