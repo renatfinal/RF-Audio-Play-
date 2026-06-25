@@ -519,6 +519,41 @@ export default function RFAudioPlayer() {
     showToast("Iniciando Streaming direto!");
   };
 
+  const nextTrackRef = useRef(nextTrack);
+  const prevTrackRef = useRef(prevTrack);
+  const togglePlayRef = useRef(togglePlay);
+
+  useEffect(() => {
+    nextTrackRef.current = nextTrack;
+    prevTrackRef.current = prevTrack;
+    togglePlayRef.current = togglePlay;
+  });
+
+  useEffect(() => {
+    if ('mediaSession' in navigator && currentTrack) {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: currentTrack.title,
+        artist: currentTrack.artist,
+        artwork: [
+          { src: currentTrack.cover || 'https://loremflickr.com/400/400/music', sizes: '400x400', type: 'image/jpeg' }
+        ]
+      });
+
+      navigator.mediaSession.setActionHandler('play', () => {
+        if (audioRef.current) {
+          audioRef.current.play().catch(e => console.error(e));
+        }
+      });
+      navigator.mediaSession.setActionHandler('pause', () => {
+        if (audioRef.current) {
+          audioRef.current.pause();
+        }
+      });
+      navigator.mediaSession.setActionHandler('previoustrack', () => prevTrackRef.current());
+      navigator.mediaSession.setActionHandler('nexttrack', () => nextTrackRef.current());
+    }
+  }, [currentTrack]);
+
   return (
     <div className="bg-[#0f0b21] sm:bg-[#06040d] text-[#f1f1f9] min-h-[100dvh] w-full flex justify-center items-center sm:p-4 font-sans overflow-hidden">
       <div className="w-full sm:max-w-[430px] bg-[#0f0b21] sm:rounded-[24px] sm:shadow-[0_20px_50px_rgba(0,0,0,0.8)] sm:border border-[#241b4e] overflow-hidden flex flex-col h-[100dvh] sm:h-[92vh] sm:max-h-[900px] relative">
@@ -534,6 +569,8 @@ export default function RFAudioPlayer() {
           onTimeUpdate={onTimeUpdate}
           onLoadedMetadata={onLoadedMetadata}
           onEnded={onTrackEnded}
+          onPlay={() => setIsPlaying(true)}
+          onPause={() => setIsPlaying(false)}
           className="hidden"
         />
 
