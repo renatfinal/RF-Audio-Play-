@@ -26,6 +26,61 @@ interface Playlist {
   trackIds: string[];
 }
 
+const DB_NAME = "rf_audio_storage";
+const DB_VERSION = 1;
+const STORE_NAME = "tracks";
+
+function openDB(): Promise<IDBDatabase> {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+        request.onupgradeneeded = (event) => {
+            const db = (event.target as IDBOpenDBRequest).result;
+
+            if (!db.objectStoreNames.contains(STORE_NAME)) {
+                db.createObjectStore(STORE_NAME, {
+                    keyPath: "id"
+                });
+            }
+        };
+
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+    });
+}
+
+async function saveAudioFile(track: Track): Promise<void> {
+    const db = await openDB();
+
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE_NAME, "readwrite");
+        tx.objectStore(STORE_NAME).put(track);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject();
+    });
+}
+
+async function loadAllTracks(): Promise<Track[]> {
+    const db = await openDB();
+
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE_NAME, "readonly");
+        const req = tx.objectStore(STORE_NAME).getAll();
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+    });
+}
+
+async function deleteAudioFile(id: string): Promise<void> {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE_NAME, "readwrite");
+        tx.objectStore(STORE_NAME).delete(id);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject();
+    });
+}
+
 export default function RFAudioPlayer() {
   const [currentTab, setCurrentTab] = useState<'player' | 'library' | 'downloader' | 'colabore'>('player');
   const [libraryTab, setLibraryTab] = useState<'tracks' | 'playlists'>('tracks');
@@ -232,6 +287,9 @@ export default function RFAudioPlayer() {
     e.stopPropagation();
     setTracks(tracks.filter(t => t.id !== id));
     
+    // Also remove from DB
+    deleteAudioFile(id).catch(console.error);
+
     // Also remove from any custom playlist
     setPlaylists(prev => {
       const next = { ...prev };
@@ -325,7 +383,21 @@ export default function RFAudioPlayer() {
     showToast("Informações atualizadas!");
   };
 
-  const handleLocalFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
+  useEffect(() => {
+    loadAllTracks().then(savedTracks => {
+      if (savedTracks.length > 0) {
+        const loadedTracks = savedTracks.map(track => {
+          if (track.fileBlob) {
+            track.url = URL.createObjectURL(track.fileBlob);
+          }
+          return track;
+        });
+        setTracks(loadedTracks);
+      }
+    }).catch(console.error);
+  }, []);
+
+  const handleLocalFiles = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
     
@@ -357,6 +429,12 @@ export default function RFAudioPlayer() {
         url: objectUrl
       };
       
+      try {
+        await saveAudioFile(newT);
+      } catch (err) {
+        console.error("Error saving track to IndexedDB", err);
+      }
+      
       newTracks.push(newT);
     }
     
@@ -383,7 +461,7 @@ export default function RFAudioPlayer() {
     setActivePlaylistId(newId);
   };
 
-  const handlePlaylistImport = (e: React.ChangeEvent<HTMLInputElement>, playlistId: string) => {
+  const handlePlaylistImport = async (e: React.ChangeEvent<HTMLInputElement>, playlistId: string) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
     
@@ -414,6 +492,12 @@ export default function RFAudioPlayer() {
             fileBlob: f,
             url: objectUrl
         };
+        
+        try {
+          await saveAudioFile(newT);
+        } catch (err) {
+          console.error("Error saving track to IndexedDB", err);
+        }
         
         newTracks.push(newT);
     }
