@@ -671,7 +671,7 @@ export default function RFAudioPlayer() {
                 >
                   <Heart className={`w-6 h-6 ${currentTrack?.isFavorite ? 'fill-red-500 text-red-500' : 'text-[#7b749b]'}`} />
                 </button>
-                <h2 className="text-[1rem] font-bold tracking-[2px] text-[#7b749b] uppercase">RF Audio Player</h2>
+                <h2 className="text-[1rem] font-bold tracking-[2px] text-transparent bg-clip-text bg-gradient-to-r from-[#c77dff] to-[#48cae4] drop-shadow-[0_0_8px_rgba(199,125,255,0.6)] uppercase">RF Audio Player</h2>
                 <button 
                   onClick={() => setCurrentTab('library')}
                   className="w-10 h-10 flex justify-center items-center rounded-full hover:bg-white/5 transition-colors text-[#7b749b]"
