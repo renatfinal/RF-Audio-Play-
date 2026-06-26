@@ -165,7 +165,7 @@ export default function RFAudioPlayer() {
             if (e?.name !== 'AbortError') {
               console.error("Audio error:", e);
               setIsPlaying(false);
-              showToast("Erro ao reproduzir o áudio.");
+              showToast("Erro ao reproduzir: " + (e?.message || "Arquivo inválido"));
             }
           });
         }
@@ -176,18 +176,38 @@ export default function RFAudioPlayer() {
 
   const currentUrlRef = useRef<string | null>(null);
 
-  const playSpecificTrack = (index: number) => {
+  const playSpecificTrack = async (index: number) => {
     const track = tracks[index];
     if (!track) return;
     
     setCurrentTrackIndex(index);
     setCurrentTab('player');
     
+    let playUrl = track.url;
+    
+    // If it's a dead blob URL from a previous session (and no fileBlob), it will fail.
+    if (playUrl && playUrl.startsWith('blob:') && !track.fileBlob) {
+        showToast("Este arquivo local não pode ser reproduzido porque não foi salvo corretamente.");
+        return;
+    }
+
+    if (!playUrl && track.fileBlob) {
+        playUrl = URL.createObjectURL(track.fileBlob);
+        
+        // Update in state immutably
+        setTracks(prev => prev.map((t, i) => i === index ? { ...t, url: playUrl } : t));
+    }
+    
+    if (!playUrl) {
+        showToast("Arquivo não encontrado");
+        return;
+    }
+    
     if (audioRef.current) {
-      if (currentUrlRef.current !== track.url) {
-        audioRef.current.src = track.url;
+      if (currentUrlRef.current !== playUrl) {
+        audioRef.current.src = playUrl;
         audioRef.current.load();
-        currentUrlRef.current = track.url;
+        currentUrlRef.current = playUrl;
       }
       const playPromise = audioRef.current.play();
       if (playPromise !== undefined) {
@@ -195,7 +215,7 @@ export default function RFAudioPlayer() {
           if (e?.name !== 'AbortError') {
             console.error("Autoplay prevented or unsupported error:", e);
             setIsPlaying(false);
-            showToast("Erro ao carregar ou reproduzir a faixa.");
+            showToast("Erro ao reproduzir: " + (e?.message || 'Arquivo inválido'));
           }
         });
       }
