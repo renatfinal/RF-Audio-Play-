@@ -659,7 +659,7 @@ export default function RFAudioPlayer() {
         />
 
         {/* --- MAIN CONTENT AREA --- */}
-        <div className="flex-1 overflow-y-auto pb-[90px] p-5 flex flex-col custom-scrollbar">
+        <div className="flex-1 overflow-y-auto pb-[120px] p-5 flex flex-col custom-scrollbar">
 
           {/* TELA 1: PLAYER */}
           {currentTab === 'player' && (
@@ -684,7 +684,7 @@ export default function RFAudioPlayer() {
                 
                 {/* Spinning Art Container */}
                 <div 
-                  className={`relative w-[250px] h-[250px] mb-6 rounded-full flex flex-col items-center justify-center overflow-hidden border-[3px] shadow-[0_0_20px_rgba(157,78,221,0.3),inset_0_0_15px_rgba(0,180,216,0.2)] transition-all duration-300`}
+                  className={`relative w-[220px] h-[220px] sm:w-[250px] sm:h-[250px] mb-4 sm:mb-6 rounded-full flex flex-col items-center justify-center overflow-hidden border-[3px] shadow-[0_0_20px_rgba(157,78,221,0.3),inset_0_0_15px_rgba(0,180,216,0.2)] transition-all duration-300`}
                   style={{
                     background: 'radial-gradient(circle, #160f33 0%, #09061a 100%)',
                     borderColor: isPlaying ? '#00b4d8' : '#3c1671',
