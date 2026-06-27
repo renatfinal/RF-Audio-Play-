@@ -82,6 +82,7 @@ async function deleteAudioFile(id: string): Promise<void> {
 }
 
 export default function RFAudioPlayer() {
+  const [showSplash, setShowSplash] = useState(true);
   const [currentTab, setCurrentTab] = useState<'player' | 'library' | 'downloader' | 'colabore'>('player');
   const [libraryTab, setLibraryTab] = useState<'tracks' | 'playlists'>('tracks');
   
@@ -127,6 +128,15 @@ export default function RFAudioPlayer() {
   const filteredTracks = tracks.filter(t => t.title.toLowerCase().includes(searchQuery.toLowerCase()) || t.artist.toLowerCase().includes(searchQuery.toLowerCase()));
 
   const currentTrack = currentTrackIndex >= 0 && currentTrackIndex < tracks.length ? tracks[currentTrackIndex] : null;
+
+  useEffect(() => {
+    if (showSplash) {
+      const timer = setTimeout(() => {
+        setShowSplash(false);
+      }, 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [showSplash]);
 
   useEffect(() => {
     try {
@@ -680,6 +690,51 @@ export default function RFAudioPlayer() {
     <div className="bg-[#0f0b21] sm:bg-[#06040d] text-[#f1f1f9] min-h-[100dvh] w-full flex justify-center items-center sm:p-4 font-sans overflow-hidden">
       <div className="w-full sm:max-w-[430px] bg-[#0f0b21] sm:rounded-[24px] sm:shadow-[0_20px_50px_rgba(0,0,0,0.8)] sm:border border-[#241b4e] overflow-hidden flex flex-col h-[100dvh] sm:h-[92vh] sm:max-h-[900px] relative">
         
+        {/* Splash Screen */}
+        <div className={`absolute inset-0 z-[500] bg-black flex items-center justify-center overflow-hidden transition-all duration-700 pointer-events-none ${showSplash ? 'opacity-100' : 'opacity-0 scale-110'}`}>
+          <div className="relative flex items-center justify-center w-full h-full">
+            {/* Neon glowing explosion background */}
+            <div className={`absolute rounded-full transition-all duration-[3000ms] ease-in-out ${showSplash ? 'w-[150vw] h-[150vw] opacity-30' : 'w-0 h-0 opacity-100'}`} 
+                  style={{
+                    background: 'radial-gradient(circle, #00b4d8 0%, transparent 60%)',
+                    filter: 'blur(50px)',
+                  }}
+            />
+            <div className={`absolute rounded-full transition-all duration-[3500ms] ease-in-out delay-100 ${showSplash ? 'w-[120vw] h-[120vw] opacity-40' : 'w-0 h-0 opacity-100'}`} 
+                  style={{
+                    background: 'radial-gradient(circle, #9d4edd 0%, transparent 60%)',
+                    filter: 'blur(40px)',
+                  }}
+            />
+            
+            {/* Logo */}
+            <div className={`relative z-10 flex flex-col items-center justify-center transition-all duration-[3000ms] ease-out ${showSplash ? 'scale-100 opacity-100' : 'scale-50 opacity-0'}`}>
+              <div className="w-[140px] h-[140px] rounded-full border-4 border-[#00b4d8] shadow-[0_0_30px_#00b4d8,inset_0_0_30px_#00b4d8] flex items-center justify-center mb-6 bg-black/60 backdrop-blur-md relative overflow-hidden animate-[pulse_2s_ease-in-out_infinite]">
+                 {/* Inner circle */}
+                 <div className="absolute inset-0 border-[2px] border-[#9d4edd] rounded-full m-3 shadow-[0_0_20px_#9d4edd,inset_0_0_20px_#9d4edd] animate-[spin_10s_linear_infinite]" />
+                 
+                 {/* Sound bars decoration */}
+                 <div className="absolute left-4 top-1/2 -translate-y-1/2 flex gap-1 items-center opacity-70">
+                    <div className="w-1 h-3 bg-[#9d4edd] rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                    <div className="w-1 h-5 bg-[#00b4d8] rounded-full animate-bounce" style={{animationDelay: '0.3s'}}></div>
+                 </div>
+                 <div className="absolute right-4 top-1/2 -translate-y-1/2 flex gap-1 items-center opacity-70">
+                    <div className="w-1 h-5 bg-[#00b4d8] rounded-full animate-bounce" style={{animationDelay: '0.4s'}}></div>
+                    <div className="w-1 h-3 bg-[#9d4edd] rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                 </div>
+
+                 <Play className="w-16 h-16 text-[#00b4d8] fill-[#00b4d8] ml-2 drop-shadow-[0_0_15px_rgba(0,180,216,1)] z-10" />
+              </div>
+              <div className="text-5xl font-black tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-[#00b4d8] via-white to-[#9d4edd] drop-shadow-[0_0_15px_rgba(157,78,221,0.8)]">
+                RF
+              </div>
+              <div className="text-sm font-bold tracking-[0.4em] text-[#00b4d8] drop-shadow-[0_0_8px_rgba(0,180,216,0.8)] mt-2">
+                AUDIO PLAYER
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Toast */}
         <div className={`absolute top-5 left-1/2 -translate-x-1/2 bg-[#9d4edd]/95 text-white py-2.5 px-5 rounded-full text-sm font-semibold z-[100] transition-all duration-300 shadow-lg whitespace-nowrap pointer-events-none ${showToastMsg ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-5'}`}>
           {toastMsg}
