@@ -1,7 +1,7 @@
 "use client";
 /* eslint-disable @next/next/no-img-element */
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { 
   Play, Pause, SkipBack, SkipForward, Shuffle, Repeat, 
   Heart, List, Search, FolderPlus, Folder, Link as LinkIcon, 
@@ -80,6 +80,140 @@ async function deleteAudioFile(id: string): Promise<void> {
         tx.onerror = () => reject();
     });
 }
+
+const LyricsRenderer = ({ lyrics, duration, audioRef }: { lyrics: string, duration: number, audioRef: React.RefObject<HTMLAudioElement | null> }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [activeIndex, setActiveIndex] = useState(-1);
+  const [syncOffset, setSyncOffset] = useState(0);
+  
+  const { parsed, isLrc } = useMemo(() => {
+    if (!lyrics) return { parsed: [], isLrc: false };
+    const lines = lyrics.split('\n').map(l => l.trim()).filter(l => l);
+    const lrcRegex = /\[(\d{2,}):(\d{2}(?:\.\d{1,3})?)\]/g;
+    const lrcLines: { time: number; text: string }[] = [];
+    let hasLrc = false;
+
+    for (const line of lines) {
+      const matches = Array.from(line.matchAll(lrcRegex));
+      if (matches.length > 0) {
+        hasLrc = true;
+        const text = line.replace(lrcRegex, '').trim();
+        for (const match of matches) {
+          const minutes = parseInt(match[1], 10);
+          const seconds = parseFloat(match[2]);
+          lrcLines.push({ time: minutes * 60 + seconds, text });
+        }
+      }
+    }
+
+    if (hasLrc && lrcLines.length > 0) {
+      return { parsed: lrcLines.sort((a, b) => a.time - b.time), isLrc: true };
+    }
+
+    // Fallback to plain text if no LRC tags are found
+    return { 
+      parsed: lines.map((line, idx) => ({ time: 0, text: line })), 
+      isLrc: false 
+    };
+  }, [lyrics, duration]);
+
+  useEffect(() => {
+    if (!isLrc || parsed.length === 0) return;
+    
+    let rafId: number;
+    const checkTime = () => {
+      if (audioRef.current) {
+        // Add 0.3s pre-highlight to make lyrics feel more responsive, 
+        // plus user adjustable syncOffset.
+        const time = audioRef.current.currentTime + syncOffset + 0.3;
+        let active = -1;
+        for (let i = 0; i < parsed.length; i++) {
+          if (time >= parsed[i].time) {
+            active = i;
+          } else {
+            break;
+          }
+        }
+        setActiveIndex(active);
+      }
+      rafId = requestAnimationFrame(checkTime);
+    };
+    
+    rafId = requestAnimationFrame(checkTime);
+    return () => cancelAnimationFrame(rafId);
+  }, [parsed, isLrc, audioRef, syncOffset]);
+
+  useEffect(() => {
+    if (isLrc && activeIndex >= 0 && containerRef.current) {
+      const activeElement = containerRef.current.children[activeIndex + 1] as HTMLElement; // +1 to account for the sync header
+      if (activeElement) {
+        activeElement.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center'
+        });
+      }
+    }
+  }, [activeIndex, isLrc]);
+
+  if (parsed.length === 0) return null;
+
+  if (!isLrc) {
+    return (
+      <div className="flex flex-col gap-2 py-4">
+        {parsed.map((line, idx) => (
+          <div key={idx} className="text-[#f1f1f9] text-[0.95rem]">
+            {line.text || ' '}
+          </div>
+        ))}
+        <div className="text-[#7b749b] text-xs mt-8 pb-4 border-t border-[#241b4e] pt-4">
+          Dica: Para sincronizar a letra com a música (estilo karaokê), adicione o tempo antes de cada linha no formato [00:00.00]. Você pode procurar por &quot;Letra sincronizada LRC&quot; na internet.
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div className="sticky top-0 z-50 bg-[#160f33]/95 backdrop-blur-md py-2 border-b border-[#241b4e] flex justify-center items-center gap-4 text-xs text-[#7b749b] rounded-t-lg shadow-sm">
+        <span className="font-medium text-[#f1f1f9]">Sincronia:</span>
+        <div className="flex items-center bg-black/40 rounded-full p-1 border border-[#241b4e]">
+          <button 
+            onClick={() => setSyncOffset(prev => prev - 0.5)} 
+            className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-white/10 hover:text-white transition-colors" 
+            title="Atrasar letra"
+          >
+            -
+          </button>
+          <span className="w-12 text-center text-[#00b4d8] font-mono">{syncOffset > 0 ? '+' : ''}{syncOffset.toFixed(1)}s</span>
+          <button 
+            onClick={() => setSyncOffset(prev => prev + 0.5)} 
+            className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-white/10 hover:text-white transition-colors" 
+            title="Adiantar letra"
+          >
+            +
+          </button>
+        </div>
+      </div>
+      <div ref={containerRef} className="flex flex-col gap-4 py-[40vh]">
+        {parsed.map((line, idx) => {
+          const isActive = idx === activeIndex;
+          return (
+            <div 
+              key={idx} 
+              className={`transition-all duration-300 px-4 ${
+                isActive 
+                  ? 'text-[#00ffff] scale-110 drop-shadow-[0_0_12px_rgba(0,255,255,1)] font-bold text-xl' 
+                  : 'text-[#f1f1f9]/60 scale-100 text-[0.95rem]'
+              }`}
+            >
+              {line.text || ' '}
+            </div>
+          );
+        })}
+      </div>
+    </>
+  );
+};
 
 export default function RFAudioPlayer() {
   const [showSplash, setShowSplash] = useState(true);
@@ -1436,9 +1570,9 @@ export default function RFAudioPlayer() {
             <div className="bg-[#160f33] w-full max-w-[320px] max-h-[80vh] rounded-2xl border border-[#3c1671] p-5 shadow-2xl flex flex-col gap-4 animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
               <h3 className="font-bold text-lg border-b border-[#241b4e] pb-2 text-center text-[#00b4d8]">Letra da Música</h3>
               
-              <div className="flex flex-col gap-2 overflow-y-auto pr-1 flex-1 custom-scrollbar text-center text-[0.95rem] leading-relaxed text-[#f1f1f9] whitespace-pre-wrap">
+              <div className="flex flex-col gap-2 overflow-y-auto pr-1 flex-1 custom-scrollbar text-center text-[#f1f1f9] whitespace-pre-wrap relative scroll-smooth">
                 {currentTrack?.lyrics ? (
-                  currentTrack.lyrics
+                  <LyricsRenderer lyrics={currentTrack.lyrics} duration={duration} audioRef={audioRef} />
                 ) : (
                   <div className="text-[#7b749b] text-sm mt-4">Nenhuma letra cadastrada para esta música.<br/><br/>Você pode adicionar a letra editando a música na aba Biblioteca.</div>
                 )}
