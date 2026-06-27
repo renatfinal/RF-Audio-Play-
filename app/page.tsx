@@ -6,7 +6,7 @@ import {
   Play, Pause, SkipBack, SkipForward, Shuffle, Repeat, 
   Heart, List, Search, FolderPlus, Folder, Link as LinkIcon, 
   Plus, Upload, Trash2, ArrowLeft, Download, Wifi, Copy, CheckCircle,
-  Share2, GripVertical, Circle, CircleDot, Edit2, ArrowRight
+  Share2, GripVertical, Circle, CircleDot, Edit2, ArrowRight, FileText
 } from 'lucide-react';
 
 interface Track {
@@ -111,9 +111,10 @@ export default function RFAudioPlayer() {
   const [activePlaylistId, setActivePlaylistId] = useState<string | null>(null);
   const [toastMsg, setToastMsg] = useState("");
   const [showToastMsg, setShowToastMsg] = useState(false);
+  const [showLyricsModal, setShowLyricsModal] = useState(false);
   const [draggedIdx, setDraggedIdx] = useState<number | null>(null);
 
-  const [editingTrack, setEditingTrack] = useState<{id: string, title: string, artist: string} | null>(null);
+  const [editingTrack, setEditingTrack] = useState<{id: string, title: string, artist: string, cover?: string, lyrics?: string} | null>(null);
   const [addToPlaylistTrackId, setAddToPlaylistTrackId] = useState<string | null>(null);
   
   const [selectedPlaylistId, setSelectedPlaylistId] = useState<string | null>(null);
@@ -391,14 +392,31 @@ export default function RFAudioPlayer() {
     setAddToPlaylistTrackId(null);
   };
 
-  const saveTrackEdit = () => {
+  const saveTrackEdit = async () => {
     if (!editingTrack) return;
-    setTracks(prev => prev.map(t => {
-      if (t.id === editingTrack.id) {
-        return { ...t, title: editingTrack.title || 'Unknown Title', artist: editingTrack.artist || 'Unknown Artist' };
-      }
-      return t;
-    }));
+    
+    // Find the original track to keep its url, fileBlob and isFavorite
+    const originalTrack = tracks.find(t => t.id === editingTrack.id);
+    if (!originalTrack) {
+        setEditingTrack(null);
+        return;
+    }
+    
+    const updatedTrack: Track = {
+        ...originalTrack,
+        title: editingTrack.title || 'Unknown Title',
+        artist: editingTrack.artist || 'Unknown Artist',
+        cover: editingTrack.cover || '',
+        lyrics: editingTrack.lyrics || ''
+    };
+
+    try {
+      await saveAudioFile(updatedTrack);
+    } catch (err) {
+      console.error("Error updating track in IndexedDB", err);
+    }
+
+    setTracks(prev => prev.map(t => t.id === editingTrack.id ? updatedTrack : t));
     setEditingTrack(null);
     showToast("Informações atualizadas!");
   };
@@ -684,7 +702,7 @@ export default function RFAudioPlayer() {
           {/* TELA 1: PLAYER */}
           {currentTab === 'player' && (
             <div className="flex flex-col flex-1 animate-in slide-in-from-right-4 duration-300">
-              <div className="flex justify-between items-center mb-5">
+              <div className="flex justify-between items-center mb-3">
                 <button 
                   onClick={toggleFavorite} 
                   className="w-10 h-10 flex justify-center items-center rounded-full hover:bg-white/5 transition-colors"
@@ -704,7 +722,7 @@ export default function RFAudioPlayer() {
                 
                 {/* Spinning Art Container */}
                 <div 
-                  className={`relative w-[220px] h-[220px] sm:w-[250px] sm:h-[250px] mb-4 sm:mb-6 rounded-full flex flex-col items-center justify-center overflow-hidden border-[3px] shadow-[0_0_20px_rgba(157,78,221,0.3),inset_0_0_15px_rgba(0,180,216,0.2)] transition-all duration-300`}
+                  className={`relative w-[200px] h-[200px] sm:w-[250px] sm:h-[250px] mb-3 sm:mb-6 rounded-full flex flex-col items-center justify-center overflow-hidden border-[3px] shadow-[0_0_20px_rgba(157,78,221,0.3),inset_0_0_15px_rgba(0,180,216,0.2)] transition-all duration-300`}
                   style={{
                     background: 'radial-gradient(circle, #160f33 0%, #09061a 100%)',
                     borderColor: isPlaying ? '#00b4d8' : '#3c1671',
@@ -733,7 +751,7 @@ export default function RFAudioPlayer() {
                   </div>
                 </div>
 
-                <div className="text-center w-full px-2 mb-5">
+                <div className="text-center w-full px-2 mb-4">
                   <div className="text-[1.3rem] font-bold mb-1.5 truncate">
                     {currentTrack ? currentTrack.title : "Nenhuma faixa selecionada"}
                   </div>
@@ -743,7 +761,7 @@ export default function RFAudioPlayer() {
                 </div>
 
                 {/* Progress Bar Container */}
-                <div className="w-full mb-6">
+                <div className="w-full mb-4">
                   <div className="relative w-full h-[20px] flex items-center group">
                     {/* Base Track */}
                     <div className="absolute w-full h-[6px] bg-[#241b4e] rounded-full group-hover:h-[8px] transition-all overflow-hidden pointer-events-none">
@@ -783,7 +801,7 @@ export default function RFAudioPlayer() {
                 </div>
 
                 {/* Player Controls */}
-                <div className="flex justify-between items-center w-full max-w-[280px] mb-4">
+                <div className="flex justify-between items-center w-full max-w-[280px] mb-2">
                   <button 
                     onClick={() => {
                       const newShuffle = !isShuffle;
@@ -831,6 +849,14 @@ export default function RFAudioPlayer() {
                     )}
                   </button>
                 </div>
+
+                <button 
+                  onClick={() => setShowLyricsModal(true)}
+                  className="flex items-center justify-center gap-2 px-4 py-1.5 mt-2 rounded-full border border-[#3c1671] text-[#7b749b] hover:text-white hover:border-[#9d4edd] transition-colors"
+                >
+                  <FileText className="w-4 h-4" />
+                  <span className="text-sm font-semibold">Letra</span>
+                </button>
 
               </div>
             </div>
@@ -926,7 +952,7 @@ export default function RFAudioPlayer() {
                             <button 
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setEditingTrack({ id: t.id, title: t.title, artist: t.artist });
+                                setEditingTrack({ id: t.id, title: t.title, artist: t.artist, cover: t.cover, lyrics: t.lyrics });
                               }}
                               className="w-8 h-8 flex items-center justify-center text-[#7b749b] hover:text-white rounded-full transition-colors flex-shrink-0"
                               title="Editar"
@@ -1048,7 +1074,7 @@ export default function RFAudioPlayer() {
                               <button 
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  setEditingTrack({ id: t.id, title: t.title, artist: t.artist });
+                                  setEditingTrack({ id: t.id, title: t.title, artist: t.artist, cover: t.cover, lyrics: t.lyrics });
                                 }}
                                 className="w-8 h-8 flex items-center justify-center text-[#7b749b] hover:text-white rounded-full transition-colors flex-shrink-0 z-10"
                                 title="Editar"
@@ -1113,7 +1139,7 @@ export default function RFAudioPlayer() {
                               <button 
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  setEditingTrack({ id: t.id, title: t.title, artist: t.artist });
+                                  setEditingTrack({ id: t.id, title: t.title, artist: t.artist, cover: t.cover, lyrics: t.lyrics });
                                 }}
                                 className="w-8 h-8 flex items-center justify-center text-[#7b749b] hover:text-white rounded-full transition-colors flex-shrink-0"
                                 title="Editar"
@@ -1267,6 +1293,36 @@ export default function RFAudioPlayer() {
                 />
               </div>
 
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm text-[#7b749b]">Capa (Imagem da Galeria)</label>
+                <input 
+                  type="file" 
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onload = (ev) => {
+                        setEditingTrack({...editingTrack, cover: ev.target?.result as string});
+                      };
+                      reader.readAsDataURL(file);
+                    }
+                  }}
+                  className="w-full py-2 px-3 bg-black/30 border border-[#241b4e] rounded-lg text-white outline-none text-sm focus:border-[#9d4edd] transition-colors file:mr-4 file:py-1 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-[#9d4edd] file:text-white hover:file:bg-[#5a189a]"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm text-[#7b749b]">Letra da Música</label>
+                <textarea 
+                  rows={4}
+                  value={editingTrack.lyrics || ''}
+                  onChange={e => setEditingTrack({...editingTrack, lyrics: e.target.value})}
+                  className="w-full py-2 px-3 bg-black/30 border border-[#241b4e] rounded-lg text-white outline-none text-sm focus:border-[#9d4edd] transition-colors custom-scrollbar"
+                  placeholder="Cole a letra da música aqui..."
+                />
+              </div>
+
               <div className="flex gap-3 justify-end mt-2">
                 <button 
                   onClick={() => setEditingTrack(null)}
@@ -1319,8 +1375,34 @@ export default function RFAudioPlayer() {
           </div>
         )}
 
+        {/* Modal de Letra da Música */}
+        {showLyricsModal && (
+          <div className="absolute inset-0 z-[200] bg-black/60 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setShowLyricsModal(false)}>
+            <div className="bg-[#160f33] w-full max-w-[320px] max-h-[80vh] rounded-2xl border border-[#3c1671] p-5 shadow-2xl flex flex-col gap-4 animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+              <h3 className="font-bold text-lg border-b border-[#241b4e] pb-2 text-center text-[#00b4d8]">Letra da Música</h3>
+              
+              <div className="flex flex-col gap-2 overflow-y-auto pr-1 flex-1 custom-scrollbar text-center text-[0.95rem] leading-relaxed text-[#f1f1f9] whitespace-pre-wrap">
+                {currentTrack?.lyrics ? (
+                  currentTrack.lyrics
+                ) : (
+                  <div className="text-[#7b749b] text-sm mt-4">Nenhuma letra cadastrada para esta música.<br/><br/>Você pode adicionar a letra editando a música na aba Biblioteca.</div>
+                )}
+              </div>
+
+              <div className="flex justify-center mt-2 pt-2 border-t border-[#241b4e]">
+                <button 
+                  onClick={() => setShowLyricsModal(false)}
+                  className="px-6 py-2 bg-gradient-to-r from-[#9d4edd] to-[#5a189a] text-white rounded-full text-sm font-semibold hover:opacity-90 transition-opacity"
+                >
+                  Fechar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* --- BOTTOM NAVIGATION --- */}
-        <nav className="absolute bottom-0 left-0 right-0 h-[75px] bg-[#0f0b21]/85 backdrop-blur-md border-t border-[#241b4e] flex justify-around items-center z-10">
+        <nav className="absolute bottom-0 left-0 right-0 h-[65px] bg-[#0f0b21]/85 backdrop-blur-md border-t border-[#241b4e] flex justify-around items-center z-10">
            <button 
              onClick={() => setCurrentTab('player')}
              className={`flex flex-col items-center gap-1.5 w-16 text-[0.75rem] transition-colors cursor-pointer ${currentTab === 'player' ? 'text-[#9d4edd] drop-shadow-[0_0_10px_rgba(157,78,221,0.4)]' : 'text-[#7b749b] hover:text-white'}`}
