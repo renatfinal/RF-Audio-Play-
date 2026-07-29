@@ -1073,13 +1073,25 @@ export default function RFAudioPlayer() {
                   </button>
                 </div>
 
-                <button 
-                  onClick={() => setShowLyricsModal(true)}
-                  className="flex items-center justify-center gap-2 px-4 py-1.5 mt-2 rounded-full border border-[#3c1671] text-[#7b749b] hover:text-white hover:border-[#9d4edd] transition-colors"
-                >
-                  <FileText className="w-4 h-4" />
-                  <span className="text-sm font-semibold">Letra</span>
-                </button>
+                <div className="flex items-center justify-center gap-3 mt-2">
+                  <button 
+                    onClick={() => setShowLyricsModal(true)}
+                    className="flex items-center justify-center gap-2 px-4 py-1.5 rounded-full border border-[#3c1671] text-[#7b749b] hover:text-white hover:border-[#9d4edd] transition-colors"
+                  >
+                    <FileText className="w-4 h-4" />
+                    <span className="text-sm font-semibold">Letra</span>
+                  </button>
+                  <button 
+                    onClick={(e) => currentTrack && shareTrack(currentTrack, e)}
+                    disabled={!currentTrack}
+                    className={`flex items-center justify-center gap-2 px-4 py-1.5 rounded-full border border-[#3c1671] transition-colors ${
+                      currentTrack ? 'text-[#7b749b] hover:text-white hover:border-[#9d4edd]' : 'text-[#7b749b]/50 cursor-not-allowed'
+                    }`}
+                  >
+                    <Share2 className="w-4 h-4" />
+                    <span className="text-sm font-semibold">Compartilhar</span>
+                  </button>
+                </div>
 
               </div>
             </div>
