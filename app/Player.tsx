@@ -118,7 +118,7 @@ const LyricsRenderer = ({ lyrics, duration, audioRef }: { lyrics: string, durati
       parsed: lines.map((line, idx) => ({ time: 0, text: line })), 
       isLrc: false 
     };
-  }, [lyrics, duration]);
+  }, [lyrics]);
 
   useEffect(() => {
     if (!isLrc || parsed.length === 0) return;
