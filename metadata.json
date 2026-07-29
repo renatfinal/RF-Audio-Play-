@@ -1,0 +1,6 @@
+{
+  "name": "RF Audio Play",
+  "description": "An audio player application migrated from GitHub.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
