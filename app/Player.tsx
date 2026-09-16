@@ -10,12 +10,13 @@ import {
 
 /* eslint-disable @next/next/no-img-element */
 
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 
 interface Track {
   id: string;
   title: string;
   artist: string;
+  album?: string;
   cover: string;
   lyrics: string;
   isFavorite: boolean;
@@ -441,6 +442,7 @@ export default function RFAudioPlayer() {
   const onLoadedMetadata = () => {
     if (audioRef.current) {
       setDuration(audioRef.current.duration);
+      updatePositionState();
     }
   };
 
@@ -829,30 +831,74 @@ export default function RFAudioPlayer() {
     togglePlayRef.current = togglePlay;
   });
 
+  const updatePositionState = useCallback(() => {
+    if ('mediaSession' in navigator && 'setPositionState' in navigator.mediaSession && audioRef.current && isFinite(audioRef.current.duration) && audioRef.current.duration > 0) {
+      try {
+        navigator.mediaSession.setPositionState({
+          duration: audioRef.current.duration,
+          playbackRate: audioRef.current.playbackRate,
+          position: audioRef.current.currentTime
+        });
+      } catch (e) {
+        console.warn('Warning: setPositionState failed', e);
+      }
+    }
+  }, []);
+
   useEffect(() => {
     if ('mediaSession' in navigator && currentTrack) {
       navigator.mediaSession.metadata = new MediaMetadata({
-        title: currentTrack.title,
-        artist: currentTrack.artist,
+        title: currentTrack.title || 'Música Desconhecida',
+        artist: currentTrack.artist || 'Artista Desconhecido',
+        album: currentTrack.album || 'Álbum Desconhecido',
         artwork: [
-          { src: currentTrack.cover || 'https://loremflickr.com/400/400/music', sizes: '400x400', type: 'image/jpeg' }
+          { src: currentTrack.cover || 'https://loremflickr.com/512/512/music', sizes: '512x512', type: 'image/jpeg' },
+          { src: currentTrack.cover || 'https://loremflickr.com/256/256/music', sizes: '256x256', type: 'image/jpeg' },
+          { src: currentTrack.cover || 'https://loremflickr.com/128/128/music', sizes: '128x128', type: 'image/jpeg' }
         ]
       });
 
       navigator.mediaSession.setActionHandler('play', () => {
         if (audioRef.current) {
           audioRef.current.play().catch((e: any) => console.error(e));
+          updatePositionState();
         }
       });
       navigator.mediaSession.setActionHandler('pause', () => {
         if (audioRef.current) {
           audioRef.current.pause();
+          updatePositionState();
         }
       });
       navigator.mediaSession.setActionHandler('previoustrack', () => prevTrackRef.current());
       navigator.mediaSession.setActionHandler('nexttrack', () => nextTrackRef.current());
+      
+      try {
+        navigator.mediaSession.setActionHandler('seekbackward', (details) => {
+          if (audioRef.current) {
+            const skipTime = details.seekOffset || 10;
+            audioRef.current.currentTime = Math.max(audioRef.current.currentTime - skipTime, 0);
+            updatePositionState();
+          }
+        });
+        navigator.mediaSession.setActionHandler('seekforward', (details) => {
+          if (audioRef.current) {
+            const skipTime = details.seekOffset || 10;
+            audioRef.current.currentTime = Math.min(audioRef.current.currentTime + skipTime, audioRef.current.duration);
+            updatePositionState();
+          }
+        });
+        navigator.mediaSession.setActionHandler('seekto', (details) => {
+          if (audioRef.current && details.seekTime !== undefined) {
+            audioRef.current.currentTime = details.seekTime;
+            updatePositionState();
+          }
+        });
+      } catch (e) {
+        console.warn('Warning: mediaSession seek actions not supported', e);
+      }
     }
-  }, [currentTrack]);
+  }, [currentTrack, updatePositionState]);
 
   return (
     <div className="bg-[#0f0b21] sm:bg-[#06040d] text-[#f1f1f9] min-h-[100dvh] w-full flex justify-center items-center sm:p-4 font-sans overflow-hidden">
@@ -914,8 +960,8 @@ export default function RFAudioPlayer() {
           onTimeUpdate={onTimeUpdate}
           onLoadedMetadata={onLoadedMetadata}
           onEnded={onTrackEnded}
-          onPlay={() => setIsPlaying(true)}
-          onPause={() => setIsPlaying(false)}
+          onPlay={() => { setIsPlaying(true); updatePositionState(); }}
+          onPause={() => { setIsPlaying(false); updatePositionState(); }}
           className="hidden"
         />
 
@@ -1013,6 +1059,7 @@ export default function RFAudioPlayer() {
                           audioRef.current.currentTime = newTime;
                         }
                         setCurrentTime(newTime);
+                        updatePositionState();
                       }}
                       className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10 m-0 p-0"
                     />
