@@ -11,6 +11,8 @@ import {
 /* eslint-disable @next/next/no-img-element */
 
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import { PWAInstallButton } from '@/components/PWAInstallButton';
+import { OfflineIndicator } from '@/components/OfflineIndicator';
 
 interface Track {
   id: string;
@@ -904,6 +906,15 @@ export default function RFAudioPlayer() {
     <div className="bg-[#0f0b21] sm:bg-[#06040d] text-[#f1f1f9] min-h-[100dvh] w-full flex justify-center items-center sm:p-4 font-sans overflow-hidden">
       <div className="w-full sm:max-w-[430px] bg-[#0f0b21] sm:rounded-[24px] sm:shadow-[0_20px_50px_rgba(0,0,0,0.8)] sm:border border-[#241b4e] overflow-hidden flex flex-col h-[100dvh] sm:h-[92vh] sm:max-h-[900px] relative">
         
+        {/* PWA Top Install Bar */}
+        <div className="px-5 py-2.5 flex justify-between items-center bg-[#160f33]/80 border-b border-[#241b4e] z-20 flex-shrink-0">
+          <div className="flex items-center gap-2">
+            <div className="w-2.5 h-2.5 rounded-full bg-gradient-to-r from-[#9d4edd] to-[#00b4d8] animate-pulse"></div>
+            <span className="text-[11px] font-bold text-[#b8b2dc] tracking-wider uppercase">PWA Offline Ready</span>
+          </div>
+          <PWAInstallButton />
+        </div>
+        
         {/* Splash Screen */}
         <div className={`absolute inset-0 z-[500] bg-black flex items-center justify-center overflow-hidden transition-all duration-700 pointer-events-none ${showSplash ? 'opacity-100' : 'opacity-0 scale-110'}`}>
           <div className="relative flex items-center justify-center w-full h-full">
@@ -1735,6 +1746,7 @@ export default function RFAudioPlayer() {
             border-radius: 4px;
           }
         `}} />
+        <OfflineIndicator />
       </div>
     </div>
   );
