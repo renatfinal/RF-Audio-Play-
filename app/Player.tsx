@@ -227,18 +227,19 @@ export default function RFAudioPlayer() {
   const [libraryTab, setLibraryTab] = useState<'tracks' | 'playlists'>('tracks');
   
   const [tracks, setTracks] = useState<Track[]>([]);
-  const [playlists, setPlaylists] = useState<Record<string, Playlist>>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const stored = window.localStorage.getItem('rf_playlists');
-        return stored ? JSON.parse(stored) : {};
-      } catch (e) {
-        console.error("Local storage access denied", e);
-        return {};
+  const [playlists, setPlaylists] = useState<Record<string, Playlist>>({});
+
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem('rf_playlists');
+      if (stored) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setPlaylists(JSON.parse(stored));
       }
+    } catch (e) {
+      console.error("Local storage access denied", e);
     }
-    return {};
-  });
+  }, []);
 
   const [currentTrackIndex, setCurrentTrackIndex] = useState<number>(-1);
   const [isPlaying, setIsPlaying] = useState(false);

@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css'; // Global styles
+import { ServiceWorkerRegister } from '@/components/ServiceWorkerRegister';
 
 export const viewport: Viewport = {
   themeColor: '#0f0b21',
@@ -27,7 +28,10 @@ export default function RootLayout({children}: {children: React.ReactNode}) {
       <head>
         <link rel="manifest" href="/manifest.json" />
       </head>
-      <body suppressHydrationWarning>{children}</body>
+      <body suppressHydrationWarning>
+        <ServiceWorkerRegister />
+        {children}
+      </body>
     </html>
   );
 }
