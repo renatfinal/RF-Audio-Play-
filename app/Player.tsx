@@ -300,6 +300,10 @@ export default function RFAudioPlayer() {
   };
 
   const togglePlay = () => {
+    if (tracks.length === 0) {
+      showToast("Nenhuma música disponível. Adicione faixas na Biblioteca ou baixe em URLs.");
+      return;
+    }
     if (currentTrackIndex === -1 && tracks.length > 0) {
       playSpecificTrack(0);
       return;
@@ -802,6 +806,40 @@ export default function RFAudioPlayer() {
   const [ytUrl, setYtUrl] = useState("");
   const [streamUrl, setStreamUrl] = useState("");
 
+  const playTrackDirectly = (track: Track, newTracksList: Track[], newIndex: number) => {
+    setTracks(newTracksList);
+    setCurrentTrackIndex(newIndex);
+    setCurrentTab('player');
+    
+    let playUrl = track.url;
+    if (!playUrl && track.fileBlob) {
+      playUrl = URL.createObjectURL(track.fileBlob);
+    }
+    if (!playUrl) {
+      showToast("Arquivo de áudio não encontrado");
+      return;
+    }
+    
+    if (audioRef.current) {
+      if (currentUrlRef.current !== playUrl) {
+        audioRef.current.src = playUrl;
+        audioRef.current.load();
+        currentUrlRef.current = playUrl;
+      }
+      const playPromise = audioRef.current.play();
+      if (playPromise !== undefined) {
+        playPromise.catch((e: any) => {
+          if (e?.name !== 'AbortError') {
+            console.error("Autoplay error:", e);
+            setIsPlaying(false);
+            showToast("Erro ao reproduzir: " + (e?.message || 'Arquivo inválido'));
+          }
+        });
+      }
+    }
+    setIsPlaying(true);
+  };
+
   const playDirectStreamUrl = () => {
     const url = streamUrl.trim();
     if (!url) {
@@ -818,10 +856,35 @@ export default function RFAudioPlayer() {
       url: url
     };
     
-    setTracks(prev => [streamTrack, ...prev]);
+    const updatedTracks = [streamTrack, ...tracks];
     setStreamUrl("");
-    playSpecificTrack(0); // Will play the newly prepended track
+    playTrackDirectly(streamTrack, updatedTracks, 0);
     showToast("Iniciando Streaming direto!");
+  };
+
+  const openDownloadPage = (urlToTransfer?: string) => {
+    const targetUrl = 'https://www.sevilon.ca/';
+    if (urlToTransfer && urlToTransfer.trim()) {
+      try {
+        if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(urlToTransfer.trim());
+        }
+      } catch (err) {
+        console.warn("Clipboard error", err);
+      }
+      showToast("Link copiado! Abrindo o conversor Sevilon...");
+    } else {
+      showToast("Abrindo https://www.sevilon.ca/...");
+    }
+
+    try {
+      const win = window.open(targetUrl, '_blank', 'noopener,noreferrer');
+      if (!win || win.closed || typeof win.closed === 'undefined') {
+        window.location.href = targetUrl;
+      }
+    } catch {
+      window.location.href = targetUrl;
+    }
   };
 
   const nextTrackRef = useRef(nextTrack);
@@ -917,7 +980,10 @@ export default function RFAudioPlayer() {
         </div>
         
         {/* Splash Screen */}
-        <div className={`absolute inset-0 z-[500] bg-black flex items-center justify-center overflow-hidden transition-all duration-700 pointer-events-none ${showSplash ? 'opacity-100' : 'opacity-0 scale-110'}`}>
+        <div 
+          onClick={() => setShowSplash(false)}
+          className={`absolute inset-0 z-[500] bg-black flex items-center justify-center overflow-hidden transition-all duration-700 ${showSplash ? 'opacity-100 cursor-pointer' : 'opacity-0 scale-110 pointer-events-none'}`}
+        >
           <div className="relative flex items-center justify-center w-full h-full">
             {/* Neon glowing explosion background */}
             <div className={`absolute rounded-full transition-all duration-[3000ms] ease-in-out ${showSplash ? 'w-[150vw] h-[150vw] opacity-30' : 'w-0 h-0 opacity-100'}`} 
@@ -1476,37 +1542,60 @@ export default function RFAudioPlayer() {
                       value={streamUrl}
                       onChange={(e) => setStreamUrl(e.target.value)}
                     />
-                    <button 
-                      onClick={playDirectStreamUrl}
-                      className="w-full mt-2 py-3.5 rounded-xl border-none bg-gradient-to-r from-[#5a189a] to-[#00b4d8] text-white font-semibold text-sm flex items-center justify-center gap-2 shadow-[0_4px_12px_rgba(157,78,221,0.3)] hover:brightness-110 transition-all cursor-pointer"
+                    <a 
+                      href="https://www.sevilon.ca/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        openDownloadPage(streamUrl);
+                      }}
+                      className="w-full mt-2 py-3.5 rounded-xl border-none bg-gradient-to-r from-[#5a189a] to-[#00b4d8] text-white font-semibold text-sm flex items-center justify-center gap-2 shadow-[0_4px_12px_rgba(157,78,221,0.3)] hover:brightness-110 transition-all cursor-pointer text-center no-underline"
                     >
-                       <Play className="w-5 h-5 fill-current"/>
-                       Tocar Agora sem baixar
-                    </button>
+                       <Download className="w-5 h-5"/>
+                       Baixar Música no dispositivo
+                    </a>
+                    {streamUrl.trim() && (
+                      <button 
+                        onClick={playDirectStreamUrl}
+                        className="w-full mt-1 py-2.5 rounded-xl border border-[#00b4d8]/40 bg-[#00b4d8]/15 text-[#00b4d8] hover:bg-[#00b4d8]/25 font-semibold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer"
+                      >
+                         <Play className="w-4 h-4 fill-current"/>
+                         Tocar URL digitada (Streaming)
+                      </button>
+                    )}
                   </div>
 
                   <div className="h-px bg-gradient-to-r from-transparent via-[#241b4e] to-transparent my-2" />
 
-                  {/* YouTube downloader placeholder */}
-                  <div className="flex flex-col gap-2 opacity-50 pointer-events-none">
+                  {/* YouTube downloader section */}
+                  <div className="flex flex-col gap-2">
                     <label className="text-[0.85rem] text-[#7b749b] font-semibold flex items-center gap-2">
                       <Download className="w-4 h-4 text-red-500"/>
-                      Baixar do YouTube (Mock/Demo)
+                      Baixar do YouTube (via Sevilon)
                     </label>
                     <input 
                       type="text" 
-                      placeholder="Cole o link do vídeo..."
-                      className="w-full py-3 px-4 bg-white/5 border border-[#241b4e] rounded-xl text-white outline-none text-sm"
+                      placeholder="Cole o link do vídeo do YouTube..."
+                      className="w-full py-3 px-4 bg-white/5 border border-[#241b4e] rounded-xl text-white outline-none text-sm focus:border-[#00b4d8] transition-colors"
                       value={ytUrl}
                       onChange={(e) => setYtUrl(e.target.value)}
                     />
-                    <button 
-                      className="w-full mt-2 py-3.5 rounded-xl border-none bg-gradient-to-r from-[#00b4d8] to-[#9d4edd] text-white font-semibold text-sm flex items-center justify-center gap-2 cursor-pointer"
+                    <a 
+                      href="https://www.sevilon.ca/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        openDownloadPage(ytUrl);
+                      }}
+                      className="w-full mt-2 py-3.5 rounded-xl border-none bg-gradient-to-r from-[#00b4d8] to-[#9d4edd] text-white font-semibold text-sm flex items-center justify-center gap-2 cursor-pointer shadow-[0_4px_12px_rgba(0,180,216,0.3)] hover:brightness-110 transition-all text-center no-underline"
                     >
-                       Converter Link
-                    </button>
-                    <div className="text-xs text-[#7b749b] text-center mt-1">
-                      A conversão de YouTube requer um backend externo.
+                       <Download className="w-5 h-5"/>
+                       Baixar Música no dispositivo
+                    </a>
+                    <div className="text-xs text-[#b8b2dc] text-center mt-1">
+                      Cole o link do vídeo e clique para abrir o Sevilon e converter em MP3.
                     </div>
                   </div>
 
