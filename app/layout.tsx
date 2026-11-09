@@ -18,7 +18,15 @@ export const metadata: Metadata = {
     title: 'RFAudio',
   },
   icons: {
-    apple: '/apple-touch-icon.png',
+    icon: [
+      { url: '/pwa-192x192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/pwa-512x512.png', sizes: '512x512', type: 'image/png' },
+      { url: '/icon.svg', type: 'image/svg+xml' }
+    ],
+    apple: [
+      { url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }
+    ],
+    shortcut: '/pwa-192x192.png'
   },
 };
 

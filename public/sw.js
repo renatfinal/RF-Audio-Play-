@@ -1,10 +1,12 @@
-const CACHE_NAME = 'rf-audio-v1';
+const CACHE_NAME = 'rf-audio-v3';
 const ASSETS_TO_CACHE = [
   '/',
   '/manifest.json',
   '/icon.svg',
   '/pwa-192x192.png',
   '/pwa-512x512.png',
+  '/pwa-maskable-512x512.png',
+  '/apple-touch-icon.png',
 ];
 
 self.addEventListener('install', (event) => {
